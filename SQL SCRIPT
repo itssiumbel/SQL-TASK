@@ -1,0 +1,74 @@
+select ut.[USER_ID], max(usr.login) login, max(usr.email) email, count(ut.task_id) count_complited,
+
+       sum(case when start_date >= cast(getdate()-datepart(dd,getdate())+1 as date)
+
+	        then datediff(hour,start_date, finish_date)/24
+
+			else
+
+            datediff(hour,cast(getdate()-datepart(dd,getdate())+1 as date), finish_date)/24
+
+			end) total_time,
+
+	    avg(case when start_date >= cast(getdate()-datepart(dd,getdate())+1 as date)
+
+	        then datediff(hour,start_date, finish_date)/24
+
+			else
+
+            datediff(hour,cast(getdate()-datepart(dd,getdate())+1 as date), finish_date)/24
+
+			end) avg_time,
+
+        count(distinct ut.project_name) project_count,
+
+        sum(reward_rub) total_reward,
+
+		STRING_AGG (project_name+':'+ cast(reward_rub as varchar(50))+' руб.','; ')
+
+                       WITHIN GROUP (ORDER BY project_name) extended_info,
+
+
+
+		max(background_color) background_color,
+
+		(select count(*) from user_task usrt 
+
+		                  where usrt.[user_id] = ut.[USER_ID] 
+
+						   and usrt.finish_date is null
+
+						   and usrt.start_date+(1.0*max(utz.timezone/24)) <getdate() 
+
+		) current_task_count
+
+
+
+from user_task ut, [user] usr,
+
+	 (select login,timezone, background_color from 
+
+        (select login,timezone, background_color, creation, 
+
+		        max(creation) over(partition by login) mcd
+
+         from user_settings) tt 
+
+	  where creation = mcd) utz
+
+
+ where 
+
+   usr.id = ut.user_id and
+
+   utz.login = ut.user_id and 
+
+   finish_date+(1.0*timezone/24) >=  cast(getdate()-datepart(dd,getdate())+2 as date)
+
+   group by ut.[USER_ID]
+
+
+--   select getdate()-1.1,DATEDIFF(hour,getdate(), getdate())
+
+
+--cast(getdate()-datepart(dd,getdate())+1 as date) between getdate()-30 and getdate()
